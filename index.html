@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>🍭 数据连连看 | 卡通特工大挑战</title>
+    <!-- QRCode.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(130deg, #ffe6b0 0%, #ffb77c 100%);
+            font-family: 'Comic Neue', 'Comic Neue', 'Chalkboard SE', 'Comic Sans MS', 'Poppins', 'Segoe UI', cursive, sans-serif;
+            padding: 24px 20px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 漂浮小装饰 */
+        body::before {
+            content: "🐣 🦊 🐼 🐧 🎈";
+            font-size: 48px;
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            opacity: 0.2;
+            pointer-events: none;
+            white-space: pre;
+            transform: rotate(-5deg);
+        }
+        body::after {
+            content: "🌟 ✨ ⭐ 💫";
+            font-size: 55px;
+            position: fixed;
+            top: 20px;
+            right: 5px;
+            opacity: 0.2;
+            pointer-events: none;
+        }
+
+        .game-container {
+            max-width: 1300px;
+            width: 100%;
+            background: #fffaf2e6;
+            backdrop-filter: blur(3px);
+            border-radius: 80px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.25), 0 0 0 5px #ffedb5, 0 0 0 12px #ffbc6e;
+            padding: 24px 20px 32px;
+            transition: 0.2s;
+        }
+
+        /* 头部卡通化 */
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .game-header h1 {
+            font-size: 2.6rem;
+            background: linear-gradient(135deg, #ff8344, #ff3e6c);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 4px 4px 0 #ffe0a3;
+            letter-spacing: -1px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sub {
+            background: #5dade2;
+            display: inline-block;
+            padding: 8px 28px;
+            border-radius: 60px;
+            color: #fff3cc;
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            box-shadow: 0 6px 0 #2c6b9b;
+        }
+
+        /* 状态栏 */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff2df;
+            border-radius: 100px;
+            padding: 8px 24px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 12px;
+            border: 2px solid #ffcd94;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .matched-counter {
+            background: #ff9f4b;
+            color: #2e241d;
+            font-weight: 800;
+            padding: 8px 24px;
+            border-radius: 40px;
+            font-size: 1.1rem;
+            box-shadow: 0 5px 0 #b4621a;
+        }
+        .remaining-info {
+            font-weight: 700;
+            color: #b45f2b;
+            background: #fff1e0;
+            padding: 6px 18px;
+            border-radius: 30px;
+        }
+        .reset-btn {
+            background: #ff7043;
+            border: none;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            padding: 8px 24px;
+            border-radius: 60px;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 5px 0 #bd3b1a;
+            transition: 0.05s linear;
+        }
+        .reset-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #bd3b1a;
+        }
+
+        /* 左右双列 - 已经交换：左边情景列（粉红），右边风险列（暖黄） */
+        .game-board {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 20px 0 20px;
+        }
+        .column {
+            flex: 1;
+            min-width: 280px;
+            border-radius: 70px;
+            padding: 22px 16px;
+            transition: all 0.2s;
+        }
+        /* 情景列 (粉红可爱) */
+        .col-scenario {
+            background: #ffe0f0;
+            border: 4px solid #ff80ab;
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+        /* 风险列 (暖黄活力) */
+        .col-risk {
+            background: #fff1b5;
+            border: 4px solid #f9a825;
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+        .column h2 {
+            text-align: center;
+            font-size: 1.9rem;
+            margin-bottom: 20px;
+            font-weight: 800;
+            background-color: #fff1cc;
+            display: inline-block;
+            width: 100%;
+            border-radius: 60px;
+            padding: 10px 0;
+        }
+        .col-scenario h2 {
+            background: #ffcddf;
+            color: #b3456f;
+            border-bottom: 5px dotted #ff99bb;
+        }
+        .col-risk h2 {
+            background: #f9cf86;
+            color: #a3510c;
+            border-bottom: 5px dotted #f6b33d;
+        }
+
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* 卡片设计 - 立体卡通 */
+        .scenario-card, .risk-card {
+            padding: 18px 14px;
+            border-radius: 48px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.12s, box-shadow 0.12s;
+            box-shadow: 0 10px 0 rgba(0,0,0,0.1);
+            border: 2px solid white;
+        }
+        /* 情景卡片 (粉红) */
+        .scenario-card {
+            background: #fff1f9;
+            color: #982b56;
+            font-size: 0.95rem;
+            text-align: left;
+            line-height: 1.4;
+            border-left: 12px solid #ff99bb;
+        }
+        /* 风险卡片 (暖黄) */
+        .risk-card {
+            background: #ffe2a4;
+            color: #6b3c0c;
+            font-size: 1.2rem;
+            text-align: center;
+            border-right: 12px solid #ffaa33;
+        }
+        /* 选中高亮醒目 */
+        .scenario-card.selected {
+            background: #ff9bc2;
+            color: #2d0d1c;
+            transform: scale(1.02);
+            box-shadow: 0 6px 0 #c7517a;
+            border-left: 12px solid white;
+        }
+        .risk-card.selected {
+            background: #ffb347;
+            color: white;
+            transform: scale(1.02);
+            box-shadow: 0 6px 0 #b4622a;
+            border-right: 12px solid white;
+        }
+
+        /* 匹配后隐藏 */
+        .scenario-card.matched, .risk-card.matched {
+            display: none;
+        }
+
+        .message-area {
+            background: #fffbe6;
+            border-radius: 48px;
+            padding: 12px 20px;
+            font-weight: 600;
+            color: #bb6b2e;
+            border-left: 12px solid #ffb347;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+
+        .qrcode-section {
+            margin-top: 24px;
+            text-align: center;
+            background: #feebcc;
+            border-radius: 56px;
+            padding: 18px;
+            border: 3px dashed #ffae70;
+        }
+        .qrcode-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #b45f1b;
+            margin-bottom: 12px;
+        }
+        #qrcode {
+            display: inline-block;
+            background: white;
+            padding: 8px;
+            border-radius: 32px;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.1);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.7rem;
+            color: #a6561c;
+            background: #fff1da;
+            border-radius: 60px;
+            padding: 12px;
+        }
+        @media (max-width: 800px) {
+            .game-board { flex-direction: column; }
+            .risk-card { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <h1>🍬 数据连连看  🧸</h1>
+        <div class="sub">五大风险挑战 VS 超萌情景</div>
+    </div>
+    <div class="stats">
+        <div class="matched-counter" id="matchedCountDisplay">🎯 已匹配 0 / 5</div>
+        <div class="remaining-info" id="remainingMsg">✨ 先点左边情景 → 再点右边风险（或反向），正确内容配对消除 ✨</div>
+        <button class="reset-btn" id="resetGameBtn">🔄 重新开局</button>
+    </div>
+
+    <div class="game-board">
+        <!-- 左侧：情景案例 (粉红可爱) -->
+        <div class="column col-scenario">
+            <h2>📖 情景案例</h2>
+            <div class="cards-list" id="scenariosContainer"></div>
+        </div>
+        <!-- 右侧：五大风险挑战 (暖黄风格) -->
+        <div class="column col-risk">
+            <h2>🛡️ 五大风险挑战</h2>
+            <div class="cards-list" id="risksContainer"></div>
+        </div>
+    </div>
+
+    <div class="message-area" id="globalMsg">
+        💡 怎么玩？ 卡片顺序已打乱！单击【左边情景】 → 再单击【右边风险】（或先右后左），内容正确配对即可消除！集齐五组胜出！
+    </div>
+
+    <!-- 二维码课堂扫码 -->
+    <div class="qrcode-section" id="qrcodeSection" style="display: none;">
+        <div class="qrcode-title">📱 扫码加入 全班PK</div>
+        <div id="qrcode"></div>
+        <div class="network-tip" id="networkTip"></div>
+    </div>
+
+    <div class="footer">
+        🌈 依据《国家安全教育大学生读本》第174-176页 <br>
+        🚨 国家安全 人人有责 | 发现可疑行为请拨打 <strong style="background:#e63946; color:white; padding:2px 14px; border-radius:40px;">12339</strong>
+    </div>
+</div>
+
+<script>
+    // ---------- 原始数据 ----------
+    const risksDataRaw = [
+        { id: 0, name: "🔧 核心技术“卡脖子”", desc: "芯片、操作系统受制于人，存在底层后门风险" },
+        { id: 1, name: "🕵️ 境外间谍“买数据”", desc: "境外机构高价购买敏感数据，拉拢学生窃密" },
+        { id: 2, name: "🎓 网络犯罪“盯上”大学生", desc: "利用求职心切，引诱非法入侵、窃取信息" },
+        { id: 3, name: "🤖 AI滥用“侵隐私”", desc: "AI换脸/语音诈骗，大数据侵犯隐私" },
+        { id: 4, name: "⚔️ 网络攻防“新战场”", desc: "国家博弈新方式，可攻击金融、电力、交通" }
+    ];
+    const scenariosDataRaw = [
+        { id: 0, text: "📱 “我国每年进口数千亿美元芯片，手机操作系统几乎都是国外的。如果别人预留后门，我们的数据就像在别人家裸奔。”", riskId: 0 },
+        { id: 1, text: "💼 “某境外机构以‘学术研究’为名，出高价购买高校学生的消费数据、位置轨迹。几名学生觉得‘不是国家机密’，就卖了。”", riskId: 1 },
+        { id: 2, text: "💰 “小张看到‘高薪兼职，日结500元，只需帮忙下载软件并授权读取通讯录’。他心动照做，结果自己信息被盗，亲友也被诈骗。”", riskId: 2 },
+        { id: 3, text: "🎭 “你下载AI换脸App上传照片声音，不久后有人用你的‘数字分身’向家人借钱。AI不只换脸，还能偷走你的身份。”", riskId: 3 },
+        { id: 4, text: "⚡ “某国黑客攻击了我国电力调度系统，导致多个城市停电。不费一枪一弹，就让一个地区陷入混乱。”", riskId: 4 }
+    ];
+
+    // 打乱数组顺序的函数 (Fisher-Yates)
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // 深拷贝并打乱顺序（用于显示，配对时仍依据原始id）
+    let risksData = shuffleArray([...risksDataRaw]);
+    let scenariosData = shuffleArray([...scenariosDataRaw]);
+
+    let matchedRiskIds = new Array(5).fill(false);
+    let matchedScenarioIds = new Array(5).fill(false);
+    let selectedType = null;   // 'risk' or 'scenario'
+    let selectedId = null;      // 存储选中卡片的原始id (风险id或情景id)
+    let msgTimeout = null;
+
+    const risksContainer = document.getElementById('risksContainer');
+    const scenariosContainer = document.getElementById('scenariosContainer');
+    const matchedCountDisplay = document.getElementById('matchedCountDisplay');
+    const globalMsgDiv = document.getElementById('globalMsg');
+    const remainingMsgSpan = document.getElementById('remainingMsg');
+
+    function setTempMessage(msg, isError = false) {
+        if (msgTimeout) clearTimeout(msgTimeout);
+        globalMsgDiv.innerHTML = isError ? `😭 ${msg}` : `🎉 ${msg}`;
+        globalMsgDiv.style.backgroundColor = isError ? "#ffe0db" : "#d4edda";
+        globalMsgDiv.style.borderLeftColor = "#ffb347";
+        msgTimeout = setTimeout(() => {
+            if (!gameCompleteFlag()) {
+                globalMsgDiv.innerHTML = "💡 怎么玩？ 卡片顺序已打乱！单击【左边情景】 → 再单击【右边风险】（或先右后左），内容正确配对即可消除！集齐五组胜出！";
+                globalMsgDiv.style.backgroundColor = "#fffbe6";
+            } else {
+                globalMsgDiv.innerHTML = "🏆 完美通关！你是数据安全超级特工！ 牢记12339举报电话！";
+                globalMsgDiv.style.backgroundColor = "#c8f0e1";
+            }
+        }, 1800);
+    }
+
+    function gameCompleteFlag() {
+        return matchedRiskIds.every(v => v === true);
+    }
+
+    function updateStatsAndUI() {
+        const matchedCount = matchedRiskIds.filter(v => v === true).length;
+        matchedCountDisplay.innerText = `🎯 已匹配 ${matchedCount} / 5`;
+        if (gameCompleteFlag()) {
+            remainingMsgSpan.innerHTML = "🎉 全配对成功！ 守护数据安全小英雄！ 🎉";
+            globalMsgDiv.innerHTML = "🏆 太棒了！你找出了五大风险挑战！\n守护国家安全，从数据安全做起。📞 记住12339！";
+            globalMsgDiv.style.backgroundColor = "#c8e6d9";
+        } else {
+            remainingMsgSpan.innerHTML = `🌟 还需匹配 ${5 - matchedCount} 组，继续加油～`;
+        }
+        renderCards();
+    }
+
+    // 根据原始id查找是否未被匹配
+    function isRiskMatched(riskId) { return matchedRiskIds[riskId]; }
+    function isScenarioMatched(scenarioId) { return matchedScenarioIds[scenarioId]; }
+
+    function attemptMatch(riskId, scenarioId) {
+        // 找到情景对应的正确风险id
+        const targetScenario = scenariosDataRaw.find(s => s.id === scenarioId);
+        if (!targetScenario) return false;
+        const correctRiskId = targetScenario.riskId;
+        if (riskId === correctRiskId) {
+            if (matchedRiskIds[riskId] || matchedScenarioIds[scenarioId]) {
+                setTempMessage("哎呀！这个组合已经配对过了！不能重复哟", true);
+                return false;
+            }
+            matchedRiskIds[riskId] = true;
+            matchedScenarioIds[scenarioId] = true;
+            setTempMessage(`✔️ 配对成功！ ${risksDataRaw[riskId].name}  ✔️`, false);
+            updateStatsAndUI();
+            return true;
+        } else {
+            const wrongName = risksDataRaw[riskId]?.name || "此风险";
+            setTempMessage(`❌ 配对错误！「${wrongName}」和这个情景不对应，再试试看～`, true);
+            return false;
+        }
+    }
+
+    function clearSelected() {
+        document.querySelectorAll('.scenario-card.selected, .risk-card.selected').forEach(c => c.classList.remove('selected'));
+        selectedType = null;
+        selectedId = null;
+    }
+
+    function renderCards() {
+        // 渲染风险卡片 (右侧，暖黄)
+        risksContainer.innerHTML = '';
+        // 遍历打乱后的风险数据，但只显示未匹配的
+        for (let risk of risksData) {
+            if (matchedRiskIds[risk.id]) continue; // 已匹配不显示
+            const card = document.createElement('div');
+            card.className = 'risk-card';
+            card.setAttribute('data-risk-id', risk.id);
+            card.innerHTML = `<div style="font-weight:800;">${risk.name}</div><div style="font-size:0.7rem; margin-top:6px;">${risk.desc}</div>`;
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (gameCompleteFlag()) { setTempMessage("游戏已完成，点重置继续挑战吧", true); return; }
+                const rId = parseInt(card.getAttribute('data-risk-id'));
+                if (matchedRiskIds[rId]) return;
+                // 如果之前选中了情景 -> 进行配对
+                if (selectedType === 'scenario') {
+                    const sId = selectedId;
+                    if (sId !== null && !matchedScenarioIds[sId]) {
+                        attemptMatch(rId, sId);
+                        clearSelected();
+                    } else {
+                        setTempMessage("请重新选择一个有效的情景卡片", true);
+                        clearSelected();
+                    }
+                } else {
+                    // 未选中情景，那么就选中当前风险
+                    clearSelected();
+                    card.classList.add('selected');
+                    selectedType = 'risk';
+                    selectedId = rId;
+                    setTempMessage(`✨ 已选中风险：${risk.name} ，现在点击左边情景配对 ✨`, false);
+                }
+            });
+            risksContainer.appendChild(card);
+        }
+
+        // 渲染情景卡片 (左侧，粉红)
+        scenariosContainer.innerHTML = '';
+        for (let scenario of scenariosData) {
+            if (matchedScenarioIds[scenario.id]) continue;
+            const card = document.createElement('div');
+            card.className = 'scenario-card';
+            card.setAttribute('data-scenario-id', scenario.id);
+            card.innerHTML = `<div>🍭 ${scenario.text}</div>`;
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (gameCompleteFlag()) { setTempMessage("游戏已完成，按重置键继续学习", true); return; }
+                const sId = parseInt(card.getAttribute('data-scenario-id'));
+                if (matchedScenarioIds[sId]) return;
+                // 如果已经选中风险 -> 配对
+                if (selectedType === 'risk') {
+                    const rId = selectedId;
+                    if (rId !== null && !matchedRiskIds[rId]) {
+                        attemptMatch(rId, sId);
+                        clearSelected();
+                    } else {
+                        setTempMessage("所选风险卡已失效，请重新选择", true);
+                        clearSelected();
+                    }
+                } else {
+                    clearSelected();
+                    card.classList.add('selected');
+                    selectedType = 'scenario';
+                    selectedId = sId;
+                    const shortText = scenario.text.length > 32 ? scenario.text.slice(0, 32) + "…" : scenario.text;
+                    setTempMessage(`📌 已选中情景：${shortText} ，现在点击右边风险配对 📌`, false);
+                }
+            });
+            scenariosContainer.appendChild(card);
+        }
+    }
+
+    function resetGame() {
+        // 重置匹配状态
+        matchedRiskIds.fill(false);
+        matchedScenarioIds.fill(false);
+        // 重新打乱显示顺序（增加挑战性）
+        risksData = shuffleArray([...risksDataRaw]);
+        scenariosData = shuffleArray([...scenariosDataRaw]);
+        clearSelected();
+        selectedType = null;
+        selectedId = null;
+        renderCards();
+        updateStatsAndUI();
+        setTempMessage("🎈 游戏重置啦！左右卡片顺序已打乱，请找到正确的情景与风险配对！", false);
+    }
+
+    // 二维码生成 (仅在http/https下生效)
+    function setupQR() {
+        const url = window.location.href;
+        if (!url || url === 'about:blank' || url.startsWith('file://')) {
+            const tipElem = document.getElementById('networkTip');
+            if (tipElem) tipElem.innerHTML = '⚠️ 本地文件无法生成二维码，请使用python -m http.server启动服务。';
+            document.getElementById('qrcodeSection').style.display = 'block';
+            return;
+        }
+        const qrDiv = document.getElementById('qrcode');
+        if (qrDiv) {
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+                text: url,
+                width: 170,
+                height: 170,
+                colorDark: "#77450e",
+                colorLight: "#fffbe6",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+        document.getElementById('qrcodeSection').style.display = 'block';
+        const tipElem = document.getElementById('networkTip');
+        if (tipElem) tipElem.innerHTML = `📡 当前游戏地址：${url}<br>手机连同一WiFi扫码即可加入战局！`;
+    }
+
+    function init() {
+        resetGame();
+        const resetBtn = document.getElementById('resetGameBtn');
+        if (resetBtn) resetBtn.addEventListener('click', resetGame);
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            setupQR();
+        } else {
+            const sec = document.getElementById('qrcodeSection');
+            if (sec) {
+                sec.style.display = 'block';
+                const tipElem = document.getElementById('networkTip');
+                if (tipElem) tipElem.innerHTML = '💡 如需二维码，请将本文件部署到http服务器（如python -m http.server）。';
+            }
+        }
+    }
+    init();
+</script>
+</body>
+</html>
